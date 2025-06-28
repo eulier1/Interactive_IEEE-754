@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IEEE 754 Double Precision Visualizer</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .number-input {
+            width: 100%;
+            max-width: 400px;
+            margin: 20px auto;
+            display: block;
+            padding: 15px;
+            font-size: 18px;
+            border: none;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            text-align: center;
+        }
+
+        .bit-display {
+            margin: 30px 0;
+            overflow-x: auto;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+        }
+
+        .bit-section {
+            display: flex;
+            margin-bottom: 15px;
+            align-items: center;
+        }
+
+        .section-label {
+            min-width: 120px;
+            font-weight: bold;
+            font-size: 14px;
+            text-align: right;
+            margin-right: 15px;
+        }
+
+        .bit-row {
+            display: flex;
+            flex-wrap: nowrap;
+            gap: 2px;
+        }
+
+        .bit {
+            width: 25px;
+            height: 30px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .bit:hover {
+            transform: scale(1.1);
+            z-index: 10;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .bit.sign {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+
+        .bit.exponent {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            color: white;
+        }
+
+        .bit.fraction {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            color: #333;
+        }
+
+        .tooltip {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            z-index: 1000;
+            margin-bottom: 5px;
+        }
+
+        .bit:hover .tooltip {
+            opacity: 1;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+            margin: 30px 0;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .value-display {
+            text-align: center;
+            margin: 20px 0;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+        }
+
+        .current-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            word-break: break-all;
+        }
+
+        .bit-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .info-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .info-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .bit-positions {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.7);
+            margin-top: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .bit {
+                width: 20px;
+                height: 25px;
+                font-size: 10px;
+            }
+            
+            .section-label {
+                min-width: 80px;
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>IEEE 754 Double Precision Visualizer</h1>
+        
+        <input type="text" class="number-input" id="numberInput" placeholder="Enter a number (e.g., 3.14159)" value="0">
+        
+        <div class="value-display">
+            <div class="current-value" id="currentValue">0</div>
+            <div>Decimal representation of the bits above</div>
+        </div>
+
+        <div class="bit-display">
+            <div class="bit-section">
+                <div class="section-label">sign (1 bit)</div>
+                <div class="bit-row" id="signBits"></div>
+                <div class="bit-positions">bit 63</div>
+            </div>
+            
+            <div class="bit-section">
+                <div class="section-label">exponent (11 bit)</div>
+                <div class="bit-row" id="exponentBits"></div>
+                <div class="bit-positions">bits 62-52</div>
+            </div>
+            
+            <div class="bit-section">
+                <div class="section-label">fraction (52 bit)</div>
+                <div class="bit-row" id="fractionBits"></div>
+                <div class="bit-positions">bits 51-0</div>
+            </div>
+        </div>
+
+        <div class="bit-info">
+            <div class="info-card">
+                <div class="info-title">Sign</div>
+                <div id="signValue">0 (positive)</div>
+            </div>
+            <div class="info-card">
+                <div class="info-title">Exponent</div>
+                <div id="exponentValue">0 (bias: 1023)</div>
+            </div>
+            <div class="info-card">
+                <div class="info-title">Fraction</div>
+                <div id="fractionValue">0</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn" onclick="randomizeBits()">🎲 Randomize Bits</button>
+            <button class="btn" onclick="resetToZero()">🔄 Reset to Zero</button>
+            <button class="btn" onclick="setToPi()">π Set to Pi</button>
+            <button class="btn" onclick="setToE()">e Set to E</button>
+        </div>
+    </div>
+
+    <script>
+        let bits = new Array(64).fill(0);
+
+        function initializeBits() {
+            const signContainer = document.getElementById('signBits');
+            const exponentContainer = document.getElementById('exponentBits');
+            const fractionContainer = document.getElementById('fractionBits');
+
+            signContainer.innerHTML = '';
+            exponentContainer.innerHTML = '';
+            fractionContainer.innerHTML = '';
+
+            // Sign bit (bit 63)
+            const signBit = createBitElement(63, 'sign');
+            signContainer.appendChild(signBit);
+
+            // Exponent bits (bits 62-52)
+            for (let i = 62; i >= 52; i--) {
+                const bit = createBitElement(i, 'exponent');
+                exponentContainer.appendChild(bit);
+            }
+
+            // Fraction bits (bits 51-0)
+            for (let i = 51; i >= 0; i--) {
+                const bit = createBitElement(i, 'fraction');
+                fractionContainer.appendChild(bit);
+            }
+        }
+
+        function createBitElement(bitIndex, type) {
+            const bitDiv = document.createElement('div');
+            bitDiv.className = `bit ${type}`;
+            bitDiv.innerHTML = `
+                0
+                <div class="tooltip">Bit ${bitIndex}<br>Value: 2^${bitIndex - (type === 'fraction' ? 52 : 0)}<br>Click to toggle</div>
+            `;
+            
+            bitDiv.onclick = () => toggleBit(bitIndex);
+            return bitDiv;
+        }
+
+        function toggleBit(bitIndex) {
+            bits[bitIndex] = bits[bitIndex] === 0 ? 1 : 0;
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            // Update bit visuals
+            document.querySelectorAll('.bit').forEach((bitEl, index) => {
+                let bitIndex;
+                if (index === 0) bitIndex = 63; // sign
+                else if (index <= 11) bitIndex = 63 - index; // exponent
+                else bitIndex = 63 - index; // fraction
+                
+                bitEl.firstChild.textContent = bits[bitIndex];
+            });
+
+            // Calculate and display the actual number
+            const value = bitsToNumber(bits);
+            document.getElementById('currentValue').textContent = value.toString();
+
+            // Update component displays
+            updateComponentDisplays();
+        }
+
+        function updateComponentDisplays() {
+            // Sign
+            const sign = bits[63];
+            document.getElementById('signValue').textContent = 
+                `${sign} (${sign === 0 ? 'positive' : 'negative'})`;
+
+            // Exponent
+            let exponentBits = '';
+            for (let i = 62; i >= 52; i--) {
+                exponentBits += bits[i];
+            }
+            const exponentValue = parseInt(exponentBits, 2);
+            const actualExponent = exponentValue - 1023;
+            document.getElementById('exponentValue').textContent = 
+                `${exponentValue} (actual: ${actualExponent}, bias: 1023)`;
+
+            // Fraction
+            let fractionBits = '';
+            for (let i = 51; i >= 0; i--) {
+                fractionBits += bits[i];
+            }
+            const fractionValue = parseInt(fractionBits, 2);
+            document.getElementById('fractionValue').textContent = fractionValue.toString();
+        }
+
+        function numberToBits(num) {
+            const buffer = new ArrayBuffer(8);
+            const view = new DataView(buffer);
+            view.setFloat64(0, num);
+            
+            const bits = new Array(64);
+            for (let i = 0; i < 8; i++) {
+                const byte = view.getUint8(i);
+                for (let j = 0; j < 8; j++) {
+                    bits[i * 8 + j] = (byte >> (7 - j)) & 1;
+                }
+            }
+            return bits;
+        }
+
+        function bitsToNumber(bits) {
+            const buffer = new ArrayBuffer(8);
+            const view = new DataView(buffer);
+            
+            for (let i = 0; i < 8; i++) {
+                let byte = 0;
+                for (let j = 0; j < 8; j++) {
+                    byte |= (bits[i * 8 + j] << (7 - j));
+                }
+                view.setUint8(i, byte);
+            }
+            
+            return view.getFloat64(0);
+        }
+
+        function setNumber(num) {
+            bits = numberToBits(num);
+            updateDisplay();
+        }
+
+        function randomizeBits() {
+            for (let i = 0; i < 64; i++) {
+                bits[i] = Math.random() < 0.5 ? 0 : 1;
+            }
+            updateDisplay();
+        }
+
+        function resetToZero() {
+            bits.fill(0);
+            updateDisplay();
+            document.getElementById('numberInput').value = '0';
+        }
+
+        function setToPi() {
+            setNumber(Math.PI);
+            document.getElementById('numberInput').value = Math.PI.toString();
+        }
+
+        function setToE() {
+            setNumber(Math.E);
+            document.getElementById('numberInput').value = Math.E.toString();
+        }
+
+        // Input handler
+        document.getElementById('numberInput').addEventListener('input', function(e) {
+            const value = parseFloat(e.target.value);
+            if (!isNaN(value)) {
+                setNumber(value);
+            }
+        });
+
+        // Initialize
+        initializeBits();
+        updateDisplay();
+    </script>
+</body>
+</html>
